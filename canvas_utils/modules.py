@@ -60,7 +60,7 @@ def get_module_id(classid, name):
     if none exists.
     """
 
-    mlist = canvas.list_modules(classid, name)
+    mlist = canvas.list_modules(classid, search=name)
 
     if mlist:
         return mlist[0]['id']
