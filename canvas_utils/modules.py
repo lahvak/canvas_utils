@@ -76,3 +76,16 @@ def find_item_position(classid, module, partial_name):
         return len(canvas.list_module_items(classid, module))
 
     return itlist[0]['position']
+
+
+def add_text_header(classid, module, text, position=None, indent=0):
+    """
+    Add a quick text header.
+    """
+
+    resp = canvas.create_module_item(classid, module, text, position,
+                                     "SubHeader", indent)
+
+    resp.raise_for_status()
+
+    return resp.json()
