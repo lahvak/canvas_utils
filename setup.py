@@ -7,5 +7,5 @@ setup(name='canvas_utils',
       author='Jan Hlavacek',
       author_email='jhlavace@svsu.edu',
       license='Apache 2.0',
-      packages=['canvas_tools'],
+      packages=['canvas_utils'],
       zip_safe=False)
