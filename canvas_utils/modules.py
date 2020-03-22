@@ -6,6 +6,8 @@ import datetime
 from calendar import month_name
 import canvas
 
+WEEKLY_MODULE_NAME_FORMAT = "Week of {} {}"
+
 
 def create_weekly_module(classid, year, month, day):
     """
@@ -24,7 +26,9 @@ def create_weekly_module(classid, year, month, day):
     mname = month_name[mnum]
 
     # It looks like specifying position as None place the module at the end
-    resp = canvas.create_module(classid, "{} {}".format(mname, day), None)
+    resp = canvas.create_module(classid,
+                                WEEKLY_MODULE_NAME_FORMAT.format(mname, day),
+                                None)
 
     resp.raise_for_status()
 
@@ -47,7 +51,7 @@ def module_name(year, month, day):
     mday = monday.day
     mmonth = month_name[monday.month]
 
-    return "Week of {} {}".format(mmonth, mday)
+    return WEEKLY_MODULE_NAME_FORMAT.format(mmonth, mday)
 
 
 def get_module_id(classid, name):
