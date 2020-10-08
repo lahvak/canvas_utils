@@ -96,6 +96,14 @@ def get_last_ordinal_module_number(classid):
     return 0
 
 
+def ordinal_module_name(number, suffix="class"):
+    """
+    Generates a name of an ordinal module, given its number.
+    """
+
+    return num2words(number, "ordinal").capitalize() + " " + suffix
+
+
 def create_next_ordinal_module(classid, suffix="class"):
     """
     Generate a module name for the next ordinal module in class and create the
@@ -104,7 +112,7 @@ def create_next_ordinal_module(classid, suffix="class"):
 
     lastmod = get_last_ordinal_module_number(classid)
 
-    name = num2words(lastmod + 1, "ordinal").capitalize() + " " + suffix
+    name = ordinal_module_name(lastmod + 1, suffix=suffix)
 
     # It looks like specifying position as None place the module at the end
     resp = canvas.create_module(classid, name, None)
