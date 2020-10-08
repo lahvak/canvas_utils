@@ -4,7 +4,11 @@ Module for handling Canvas modules and module items
 
 import datetime
 from calendar import month_name
+from number_parser import parse_ordinal
+from num2words import num2words
 import canvas
+
+# Weekly modules
 
 WEEKLY_MODULE_NAME_FORMAT = "Week of {} {}"
 
@@ -52,6 +56,62 @@ def module_name(year, month, day):
     mmonth = month_name[monday.month]
 
     return WEEKLY_MODULE_NAME_FORMAT.format(mmonth, mday)
+
+
+# Ordinal modules ("First class", ...)
+
+def drop_last_iter(lst):
+    """Keep removing last item from l while it is nonempty"""
+    while lst:
+        yield lst
+        lst = lst[0:-1]
+
+
+def get_ordinal_from_name(name):
+    """Gets a name like 'Second class' and translates it into int"""
+
+    words = name.split()
+
+    for sublist in drop_last_iter(words):
+        parsed = parse_ordinal(" ".join(sublist))
+        if not (parsed is None):
+            return parsed
+
+    return None
+
+
+def get_last_ordinal_module_number(classid):
+    """
+    Returns the number corresponding to the last ordinal module.
+    """
+
+    mlist = canvas.list_modules(classid)
+
+    numbers = [n for n in (get_ordinal_from_name(mod['name']) for mod in mlist)
+               if not (n is None)]
+
+    if numbers:
+        return max(numbers)
+
+    return 0
+
+
+def create_next_ordinal_module(classid, suffix="class"):
+    """
+    Generate a module name for the next ordinal module in class and create the
+    module on Canvas.  Returns the module id.
+    """
+
+    lastmod = get_last_ordinal_module_number(classid)
+
+    name = num2words(lastmod + 1, "ordinal").capitalize() + " " + suffix
+
+    # It looks like specifying position as None place the module at the end
+    resp = canvas.create_module(classid, name, None)
+
+    resp.raise_for_status()
+
+    return resp.json()['id']
 
 
 def get_module_id(classid, name):
