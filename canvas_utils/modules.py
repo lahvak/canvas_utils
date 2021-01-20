@@ -8,7 +8,172 @@ from number_parser import parse_ordinal
 from num2words import num2words
 import canvas
 
+# Module items
+
+WWURL = "https://webwork.svsu.edu/webwork2/{}/{}"
+
+
+class ModuleItem:
+    def __init__(self, title, indent=0):
+        self.title = title
+        self.indent = indent
+
+    def create(self, course, module):
+        print("Plain ModuleItem cannot be created!")
+
+
+class ItemHeader(ModuleItem):
+    def create(self, course, module):
+        canvas.create_module_item(course, module, self.title, None,
+                                  "SubHeader", indent=self.indent)
+
+
+class ItemFile(ModuleItem):
+    def __init__(self, title, fname, indent=0):
+        super().__init__(title, indent)
+        self.fname = fname
+
+    def create(self, course, module):
+        resp = canvas.list_files(course, self.fname)
+
+        # This is really stoopid, it just takes the first file that was found,
+        # so if there is more files with the same name, be careful.  Eventually
+        # there should be a way to specify a folder TODO
+
+        if not resp:
+            print("Creating file item: file ain't there!")
+        else:
+            fileid = resp[0]['id']
+            canvas.create_module_item(course, module, self.title, None,
+                                      "File", indent=self.indent,
+                                      content=fileid)
+
+
+class ItemLocalFile(ModuleItem):
+    def __init__(self, title, local_file, remote_path,
+                 remote_name=None, indent=0):
+        super().__init__(title, indent)
+        self.local_file = local_file
+        self.remote_path = remote_path
+        self.remote_name = remote_name
+
+    def create(self, course, module):
+        resp = canvas.upload_file_to_course(course, self.local_file,
+                                            self.remote_path,
+                                            self.remote_name)
+
+        fileid = resp.json()['id']
+
+        canvas.create_module_item(course, module, self.title, None,
+                                  "File", indent=self.indent,
+                                  content=fileid)
+
+
+class ItemAssignment(ModuleItem):
+    def __init__(self, title, name=None, indent=0):
+        super().__init__(title, indent)
+        if name is None:
+            self.name = title
+        else:
+            self.name = name
+
+    def create(self, course, module):
+        resp = canvas.get_assignments(course, self.name)
+
+        # This is really stoopid, it just takes the first assignment that was
+        # found, so if there is more assignments with the same name, ...
+
+        if not resp:
+            print("Creating assignment item: assignment ain't there!")
+        else:
+            assid = resp[0]['id']
+            canvas.create_module_item(course, module, self.title, None,
+                                      "Assignment", indent=self.indent,
+                                      content=assid)
+
+
+class ItemWebworkSet(ModuleItem):
+    def __init__(self, title, wwclass, wwset, points, deadline, group=None,
+                 name=None, announcement=None, indent=0):
+        super().__init__(title, indent)
+        self.wwclass = wwclass
+        self.wwset = wwset
+        self.points = points
+        self.deadline = deadline
+        self.group = group
+        self.announcement = announcement
+        if name is None:
+            self.name = wwset.replace("_", " ")
+        else:
+            self.name = name
+
+    def create(self, course, module):
+        url = WWURL.format(self.wwclass, self.wwset)
+
+        groups = canvas.get_assignment_groups(course)
+        groupid = groups[0]['id']
+        if self.group is not None:
+            for group in groups:
+                if group['name'] == self.group:
+                    groupid = group['id']
+                    break
+
+        ass = canvas.create_assignment(course, self.name, "WeBWorK",
+                                       self.points, self.deadline, groupid,
+                                       submission_types="external_tool",
+                                       ext_tool_url=url, ext_tool_new_tab=True)
+        ass.raise_for_status()
+        assid = ass.json()["id"]
+
+        canvas.create_module_item(course, module, self.title, None,
+                                  "Assignment", indent=self.indent,
+                                  content=assid)
+
+        if self.announcement is not None:
+            date = datetime.datetime.strptime(
+                self.deadline, "%Y-%m-%dT%H:%M:%S"
+            )
+            canvas.post_announcement_from_markdown(
+                course,
+                "Assignment {} posted".format(self.name),
+                self.announcement + date.strftime(
+                    "\n\n__Due %m/%d/%y at %H:%M__"
+                )
+            )
+
+
+class ItemURL(ModuleItem):
+    def __init__(self, title, url, indent=0, new_tab=False):
+        super().__init__(title, indent)
+        self.url = url
+        self.new_tab = new_tab
+
+    def create(self, course, module):
+        canvas.create_module_item(course, module, self.title, None,
+                                  "ExternalUrl", indent=self.indent,
+                                  external_url=self.url, new_tab=self.new_tab)
+
+
+class ItemUtoob(ItemURL):
+    def __init__(self, title, movieid, indent=0):
+        super().__init__(title, "https://youtu.be/" + movieid,
+                         indent=indent, new_tab=True)
+
+
+class ItemTool(ModuleItem):
+    def __init__(self, title, url, indent=0, new_tab=False):
+        super().__init__(title, indent)
+        self.url = url
+        self.new_tab = new_tab
+
+    def create(self, course, module):
+        canvas.create_module_item(course, module, self.title, None,
+                                  "ExternalTool", indent=self.indent,
+                                  external_url=self.url, new_tab=self.new_tab)
+
+
 # Weekly modules
+
 
 WEEKLY_MODULE_NAME_FORMAT = "Week of {} {}"
 
