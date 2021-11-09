@@ -92,6 +92,58 @@ class ItemAssignment(ModuleItem):
                                       content=assid)
 
 
+class ItemAssignmentCreate(ModuleItem):
+    def __init__(self, title, name=None, markdown_description="",
+                 points=0, due_at=None, group=None,
+                 submission_types="on_paper", allowed_extensions=None,
+                 peer_reviews=False, auto_peer_reviews=False,
+                 ext_tool_url=None, ext_tool_new_tab=True,
+                 indent=0):
+        super().__init__(title, indent)
+        if name is None:
+            self.name = title
+        else:
+            self.name = name
+
+        self.markdown_description = markdown_description
+        self.points = points
+        self.due_at = due_at
+        self.group = group
+        self.submission_types = submission_types
+        self.allowed_extensions = allowed_extensions
+        self.peer_reviews = peer_reviews
+        self.auto_peer_reviews = auto_peer_reviews
+        self.ext_tool_url = ext_tool_url
+        self.ext_tool_new_tab = ext_tool_new_tab
+
+    def create(self, course, module):
+
+        groups = canvas.get_assignment_groups(course)
+        groupid = groups[0]['id']
+        if self.group is not None:
+            for group in groups:
+                if group['name'] == self.group:
+                    groupid = group['id']
+                    break
+
+        resp = canvas.create_assignment(
+            course, self.name,
+            self.markdown_description, self.points,
+            self.due_at, groupid,
+            submission_types=self.submission_types,
+            allowed_extensions=self.allowed_extensions,
+            peer_reviews=self.peer_reviews,
+            auto_peer_reviews=self.auto_peer_reviews,
+            ext_tool_url=self.ext_tool_url,
+            ext_tool_new_tab=self.ext_tool_new_tab)
+
+        resp.raise_for_status()
+        assid = resp.json()['id']
+        canvas.create_module_item(course, module, self.title, None,
+                                  "Assignment", indent=self.indent,
+                                  content=assid)
+
+
 class ItemWebworkSet(ModuleItem):
     def __init__(self, title, wwclass, wwset, points, deadline, group=None,
                  name=None, announcement=None, indent=0):
