@@ -98,6 +98,7 @@ class ItemAssignmentCreate(ModuleItem):
                  submission_types="on_paper", allowed_extensions=None,
                  peer_reviews=False, auto_peer_reviews=False,
                  ext_tool_url=None, ext_tool_new_tab=True,
+                 announcement=None,
                  indent=0):
         super().__init__(title, indent)
         if name is None:
@@ -115,6 +116,10 @@ class ItemAssignmentCreate(ModuleItem):
         self.auto_peer_reviews = auto_peer_reviews
         self.ext_tool_url = ext_tool_url
         self.ext_tool_new_tab = ext_tool_new_tab
+        if announcement == "description":
+            self.announcement = markdown_description
+        else:
+            self.announcement = announcement
 
     def create(self, course, module):
 
@@ -142,6 +147,18 @@ class ItemAssignmentCreate(ModuleItem):
         canvas.create_module_item(course, module, self.title, None,
                                   "Assignment", indent=self.indent,
                                   content=assid)
+
+        if self.announcement is not None:
+            date = datetime.datetime.strptime(
+                self.deadline, "%Y-%m-%dT%H:%M:%S"
+            )
+            canvas.post_announcement_from_markdown(
+                course,
+                "Assignment {} posted".format(self.name),
+                self.announcement + date.strftime(
+                    "\n\n__Due %m/%d/%y at %H:%M__"
+                )
+            )
 
 
 class ItemWebworkSet(ModuleItem):
