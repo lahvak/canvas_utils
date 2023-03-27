@@ -150,7 +150,7 @@ class ItemAssignmentCreate(ModuleItem):
 
         if self.announcement is not None:
             date = datetime.datetime.strptime(
-                self.deadline, "%Y-%m-%dT%H:%M:%S"
+                self.due_at, "%Y-%m-%dT%H:%M:%S"
             )
             canvas.post_announcement_from_markdown(
                 course,
