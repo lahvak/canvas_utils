@@ -165,7 +165,7 @@ class ItemAssignmentCreate(ModuleItem):
             "Auto PR: " + str(self.auto_peer_reviews),
             "External tool: " + str(self.ext_tool_url),
             "New tab: " + str(self.ext_tool_new_tab),
-            self.announcement
+            "Announcement: " + str(self.announcement)
         ]
 
     def create(self, course, module):
@@ -231,7 +231,7 @@ class ItemWebworkSet(ModuleItem):
             "Points: " + str(self.points),
             "Due: " + str(self.deadline),
             "Group: " + str(self.group),
-            str(self.announcement)
+            "Announcement: " + str(self.announcement)
         ]
 
     def create(self, course, module):
