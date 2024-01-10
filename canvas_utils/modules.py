@@ -12,11 +12,20 @@ import canvas
 
 WWURL = "https://webwork.svsu.edu/webwork2/{}/{}"
 
+INDENTSTR = ">  "
+
 
 class ModuleItem:
     def __init__(self, title, indent=0):
         self.title = title
         self.indent = indent
+
+    def __str__(self):
+        return "\n".join([INDENTSTR*self.indent + line for line in
+                         self.__lines()])
+
+    def __lines(self):
+        return [self.title]
 
     def create(self, course, module):
         print("Plain ModuleItem cannot be created!")
@@ -32,6 +41,9 @@ class ItemFile(ModuleItem):
     def __init__(self, title, fname, indent=0):
         super().__init__(title, indent)
         self.fname = fname
+
+    def __lines(self):
+        return ["File:", self.title, self.fname]
 
     def create(self, course, module):
         resp = canvas.list_files(course, self.fname)
@@ -57,6 +69,15 @@ class ItemLocalFile(ModuleItem):
         self.remote_path = remote_path
         self.remote_name = remote_name
 
+    def __lines(self):
+        return [
+            "File upload:",
+            self.title,
+            self.local_file,
+            self.remote_path,
+            self.remote_name
+        ]
+
     def create(self, course, module):
         resp = canvas.upload_file_to_course(course, self.local_file,
                                             self.remote_path,
@@ -76,6 +97,13 @@ class ItemAssignment(ModuleItem):
             self.name = title
         else:
             self.name = name
+
+    def __lines(self):
+        return [
+            "Assignment:",
+            self.title,
+        ]
+        self.name
 
     def create(self, course, module):
         resp = canvas.get_assignments(course, self.name)
@@ -120,6 +148,24 @@ class ItemAssignmentCreate(ModuleItem):
             self.announcement = markdown_description
         else:
             self.announcement = announcement
+
+    def __lines(self):
+        return [
+            "Create assignment:",
+            self.title,
+            self.name,
+            self.markdown_description,
+            "Points: " + str(self.points),
+            "Due: " + str(self.due_at),
+            "Group: " + str(self.group),
+            "Submissions: " + str(self.submission_types),
+            "Extensions: " + str(self.allowed_extensions),
+            "Peer reviews: " + str(self.peer_reviews),
+            "Auto PR: " + str(self.auto_peer_reviews),
+            "External tool: " + str(self.ext_tool_url),
+            "New tab: " + str(self.ext_tool_new_tab),
+            self.announcement
+        ]
 
     def create(self, course, module):
 
@@ -176,6 +222,17 @@ class ItemWebworkSet(ModuleItem):
         else:
             self.name = name
 
+    def __lines(self):
+        return [
+            "WeBWorK assignment:",
+            self.title,
+            self.name,
+            "Points: " + str(self.points),
+            "Due: " + str(self.deadline),
+            "Group: " + str(self.group),
+            self.announcement
+        ]
+
     def create(self, course, module):
         url = WWURL.format(self.wwclass, self.wwset)
 
@@ -217,6 +274,14 @@ class ItemURL(ModuleItem):
         self.url = url
         self.new_tab = new_tab
 
+    def __lines(self):
+        return [
+            "URL:",
+            self.title,
+            "URL: " + str(self.url),
+            "New tab: " + str(self.new_tab)
+        ]
+
     def create(self, course, module):
         canvas.create_module_item(course, module, self.title, None,
                                   "ExternalUrl", indent=self.indent,
@@ -234,6 +299,14 @@ class ItemTool(ModuleItem):
         super().__init__(title, indent)
         self.url = url
         self.new_tab = new_tab
+
+    def __lines(self):
+        return [
+            "Tool:",
+            self.title,
+            "URL: " + str(self.url),
+            "New tab: " + str(self.new_tab)
+        ]
 
     def create(self, course, module):
         canvas.create_module_item(course, module, self.title, None,
