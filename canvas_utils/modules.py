@@ -6,6 +6,7 @@ import datetime
 from calendar import month_name
 from number_parser import parse_ordinal
 from num2words import num2words
+from enum import IntEnum
 import canvas
 
 # Module items
@@ -22,9 +23,9 @@ class ModuleItem:
 
     def __str__(self):
         return "\n".join([INDENTSTR*self.indent + line for line in
-                         self.__lines()])
+                         self.__lines__()])
 
-    def __lines(self):
+    def __lines__(self):
         return [self.title]
 
     def create(self, course, module):
@@ -42,7 +43,7 @@ class ItemFile(ModuleItem):
         super().__init__(title, indent)
         self.fname = fname
 
-    def __lines(self):
+    def __lines__(self):
         return ["File:", self.title, self.fname]
 
     def create(self, course, module):
@@ -69,13 +70,13 @@ class ItemLocalFile(ModuleItem):
         self.remote_path = remote_path
         self.remote_name = remote_name
 
-    def __lines(self):
+    def __lines__(self):
         return [
             "File upload:",
             self.title,
             self.local_file,
             self.remote_path,
-            self.remote_name
+            str(self.remote_name)
         ]
 
     def create(self, course, module):
@@ -98,12 +99,12 @@ class ItemAssignment(ModuleItem):
         else:
             self.name = name
 
-    def __lines(self):
+    def __lines__(self):
         return [
             "Assignment:",
             self.title,
+            self.name
         ]
-        self.name
 
     def create(self, course, module):
         resp = canvas.get_assignments(course, self.name)
@@ -149,7 +150,7 @@ class ItemAssignmentCreate(ModuleItem):
         else:
             self.announcement = announcement
 
-    def __lines(self):
+    def __lines__(self):
         return [
             "Create assignment:",
             self.title,
@@ -222,7 +223,7 @@ class ItemWebworkSet(ModuleItem):
         else:
             self.name = name
 
-    def __lines(self):
+    def __lines__(self):
         return [
             "WeBWorK assignment:",
             self.title,
@@ -230,7 +231,7 @@ class ItemWebworkSet(ModuleItem):
             "Points: " + str(self.points),
             "Due: " + str(self.deadline),
             "Group: " + str(self.group),
-            self.announcement
+            str(self.announcement)
         ]
 
     def create(self, course, module):
@@ -274,7 +275,7 @@ class ItemURL(ModuleItem):
         self.url = url
         self.new_tab = new_tab
 
-    def __lines(self):
+    def __lines__(self):
         return [
             "URL:",
             self.title,
@@ -300,7 +301,7 @@ class ItemTool(ModuleItem):
         self.url = url
         self.new_tab = new_tab
 
-    def __lines(self):
+    def __lines__(self):
         return [
             "Tool:",
             self.title,
@@ -468,3 +469,108 @@ def add_text_header(classid, module, text, position=None, indent=0):
     resp.raise_for_status()
 
     return resp.json()
+
+
+Day = IntEnum(
+    'Day',
+    [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday"
+    ],
+    start=0
+)
+
+
+class SemesterDates:
+    """
+    Keeps track of a start date of a semester, and provides methods
+    for related calculations.  Makes sure that start date is Monday.
+    """
+
+    def __init__(self, start_date, default_due_time=None):
+        self.start_date = start_date - datetime.timedelta(start_date.weekday())
+        if default_due_time is None:
+            self.default_due_time = "23:50:00"
+        else:
+            self.default_due_time = default_due_time
+
+    def week_start(self, week):
+        """
+        Gives the starting date of the given week. Weeks are numbered
+        from 1.
+        """
+
+        return self.start_date + datetime.timedelta(weeks=week-1)
+
+    def week_and_day(self, week, day):
+        """
+        Gives the date of the given week and day. Weeks are numbered
+        from 1. Days are numbered from 0, which is Monday, or using the
+        Day enum type.
+        """
+
+        return self.start_date + datetime.timedelta(weeks=week-1, days=day)
+
+    def due_day(self, week, day, time=None):
+        """
+        week is a semester week number, starting with 1,
+        day is either an integer starting with 0 for Monday, or a Day type.
+        Time is the due time, in "HH:MM:SS" format, defaulting to the
+        default time set for the class instance.
+        """
+
+        date = self.start_date + datetime.timedelta(weeks=week-1, days=day)
+
+        if time is None:
+            time = self.default_due_time
+
+        return "{}T{}".format(
+            date.isoformat(), time
+        )
+
+    def due_date(self, date, time=None):
+        """
+        Date is in the format "mm-dd" or "mm/dd".  Year is automatically
+        inherited from the start day.
+        Time is the due time, in "HH:MM:SS" format, defaulting to the
+        default time set for the class instance.
+        """
+        if time is None:
+            time = self.default_due_time
+
+        return "{}-{}T{}".format(
+            self.start_date.year,
+            date.replace("/", "-"),
+            time)
+
+
+def post_module(cls, mod, semester_dates, print_only=False):
+    """
+    Post a weekly module. The module is a dict with fields:
+    week: week number, staring with 1
+    items: a list of module items
+
+    semester_dates is an instance of SemesterDates class.
+
+    If print_only is true, do not actually post, just print.
+    """
+    week = mod['week']
+    start_date = semester_dates.week_start(week)
+    year = start_date.year
+    month = start_date.strftime("%B")
+    day = start_date.day
+    if print_only:
+        print(f"Module for {month}/{day}/{year}")
+    else:
+        modid = create_weekly_module(cls, year, month, day)
+
+    for item in mod['items']:
+        if print_only:
+            print(item)
+        else:
+            item.create(cls, modid)
