@@ -4,10 +4,11 @@ Module for handling Canvas modules and module items
 
 import datetime
 from calendar import month_name
-from number_parser import parse_ordinal
-from num2words import num2words
 from enum import IntEnum
+
 import canvas
+from num2words import num2words
+from number_parser import parse_ordinal
 
 # Module items
 
@@ -84,7 +85,7 @@ class ItemLocalFile(ModuleItem):
                                             self.remote_path,
                                             self.remote_name)
 
-        fileid = resp.json()['id']
+        fileid = resp['upload']['id']
 
         canvas.create_module_item(course, module, self.title, None,
                                   "File", indent=self.indent,
@@ -189,8 +190,7 @@ class ItemAssignmentCreate(ModuleItem):
             ext_tool_url=self.ext_tool_url,
             ext_tool_new_tab=self.ext_tool_new_tab)
 
-        resp.raise_for_status()
-        assid = resp.json()['id']
+        assid = resp['id']
         canvas.create_module_item(course, module, self.title, None,
                                   "Assignment", indent=self.indent,
                                   content=assid)
@@ -249,8 +249,8 @@ class ItemWebworkSet(ModuleItem):
                                        self.points, self.deadline, groupid,
                                        submission_types="external_tool",
                                        ext_tool_url=url, ext_tool_new_tab=True)
-        ass.raise_for_status()
-        assid = ass.json()["id"]
+
+        assid = ass["id"]
 
         canvas.create_module_item(course, module, self.title, None,
                                   "Assignment", indent=self.indent,
@@ -342,9 +342,10 @@ def create_weekly_module(classid, year, month, day):
                                 WEEKLY_MODULE_NAME_FORMAT.format(mname, day),
                                 None)
 
-    resp.raise_for_status()
+    if 'id' in resp:
+        return resp['id']
 
-    return resp.json()['id']
+    return None
 
 
 def module_name(year, month, day):
@@ -425,9 +426,10 @@ def create_next_ordinal_module(classid, suffix="class"):
     # It looks like specifying position as None place the module at the end
     resp = canvas.create_module(classid, name, None)
 
-    resp.raise_for_status()
+    if id in resp:
+        return resp['id']
 
-    return resp.json()['id']
+    return None
 
 
 def get_module_id(classid, name):
@@ -466,9 +468,7 @@ def add_text_header(classid, module, text, position=None, indent=0):
     resp = canvas.create_module_item(classid, module, text, position,
                                      "SubHeader", indent)
 
-    resp.raise_for_status()
-
-    return resp.json()
+    return resp
 
 
 Day = IntEnum(
@@ -495,7 +495,7 @@ class SemesterDates:
     def __init__(self, start_date, default_due_time=None):
         self.start_date = start_date - datetime.timedelta(start_date.weekday())
         if default_due_time is None:
-            self.default_due_time = "23:50:00"
+            self.default_due_time = "23:59:00"
         else:
             self.default_due_time = default_due_time
 
@@ -565,7 +565,7 @@ def post_module(cls, mod, semester_dates, print_only=False):
     month = start_date.strftime("%B")
     day = start_date.day
     if print_only:
-        print(f"Module for {month}/{day}/{year}")
+        print(f"==================== Module for {month}/{day}/{year} ====================")
     else:
         modid = create_weekly_module(cls, year, month, day)
 
@@ -574,3 +574,33 @@ def post_module(cls, mod, semester_dates, print_only=False):
             print(item)
         else:
             item.create(cls, modid)
+
+
+def update_module(cls, mod, semester_dates, print_only=False):
+    """
+    Update an existing  weekly module. The module is a dict with fields:
+    week: week number, staring with 1
+    items: a list of module items
+
+    semester_dates is an instance of SemesterDates class.
+
+    If print_only is true, do not actually post, just print.
+    """
+    week = mod['week']
+    start_date = semester_dates.week_start(week)
+    year = start_date.year
+    month = start_date.strftime("%B")
+    day = start_date.day
+    if print_only:
+        print(f"Module for {month}/{day}/{year}")
+
+    modid = get_module_id(cls, module_name(year, month, day))
+
+    if modid is None:
+        print("Could not find the module")
+    else:
+        for item in mod['items']:
+            if print_only:
+                print(item)
+            else:
+                item.create(cls, modid)
