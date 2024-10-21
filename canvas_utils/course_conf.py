@@ -43,7 +43,7 @@ The `ohs.yaml` can look like this:
 
 import yaml
 from yaml.loader import SafeLoader
-from yamlinclude import YamlIncludeConstructor
+from yaml_include import Constructor
 from pathlib import Path
 
 
@@ -81,7 +81,7 @@ def read_config_file(fpath):
     """
 
     basedir = fpath.parent
-    YamlIncludeConstructor.add_to_loader_class(
+    Constructor.add_to_loader_class(
         loader_class=SafeLoader, base_dir=basedir)
 
     with open(fpath, 'r') as class_conf:
